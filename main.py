@@ -45,7 +45,23 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     # You can use progress_bar.update(1) to see the progress during training
     # You can refer to the pytorch tutorial covered in class for reference
 
-    raise NotImplementedError
+    for i in range(num_epochs):
+        sum_loss = 0
+        for batch in train_dataloader:
+            
+            batch = {k: v.to('cuda') for k, v in batch.items()}
+            outputs = model(**batch)
+            loss = outputs.loss
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+            sum_loss += loss.item()
+            progress_bar.update(1)
+
+        average_loss = sum_loss / len(train_dataloader)
+        print(f'Epoch: [{i}], Average Loss: {average_loss:.2f}')
 
     ##### YOUR CODE ENDS HERE ######
 
@@ -93,9 +109,19 @@ def create_augmented_dataloader(args, dataset):
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
 
-    raise NotImplementedError
+    ind_list = random.sample(range(len(dataset["train"]["text"])), 5000)
+    sample = [dataset["train"]["text"][i] for i in ind_list]
+    sample_trans = [custom_transform(example) for example in sample]
+    aug_tok = dataset["train"].with_column("text", dataset["train"]["text"] + sample_trans)
 
-    ##### YOUR CODE ENDS HERE ######
+    aug_result = aug_tok.map(tokenize_function, batched=True, load_from_cache_file=False)
+    aug_result = aug_result.remove_columns(["text"]).rename_column("label", "labels")
+    #aug_result = aug_result.rename_column("label", "labels")
+    aug_result.set_format("torch")
+
+    # Create a dataloader for the augmented training dataset
+    train_dataloader = DataLoader(aug_result, batch_size=args.batch_size, shuffle=True)
+
 
     return train_dataloader
 
