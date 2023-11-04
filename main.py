@@ -109,19 +109,18 @@ def create_augmented_dataloader(args, dataset):
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
 
-    ind_list = random.sample(range(len(dataset["train"]["text"])), 5000)
-    sample = [dataset["train"]["text"][i] for i in ind_list]
-    sample_trans = [custom_transform(example) for example in sample]
-    aug_tok = dataset["train"].with_column("text", dataset["train"]["text"] + sample_trans)
+    aug_data = dataset["train"].shuffle(seed=12).select(range(5000))
+    aug_data = aug_data.map(custom_transform, load_from_cache_file=False)
+    comb_data = datasets.concatenate_datasets([dataset["train"], aug_data])
+    tok_data = comb_data.map(tokenize_function, batched=True)
+    tok_data = tok_data.remove_columns(["text"])
+    tok_data = tok_data.rename_column("label", "labels")
 
-    aug_result = aug_tok.map(tokenize_function, batched=True, load_from_cache_file=False)
-    aug_result = aug_result.remove_columns(["text"]).rename_column("label", "labels")
-    #aug_result = aug_result.rename_column("label", "labels")
-    aug_result.set_format("torch")
+    # Set the format for PyTorch
+    tok_data.set_format("torch")
+    train_dataloader = DataLoader(tok_data, shuffle=True, batch_size=args.batch_size)
 
-    # Create a dataloader for the augmented training dataset
-    train_dataloader = DataLoader(aug_result, batch_size=args.batch_size, shuffle=True)
-
+    ##### YOUR CODE ENDS HERE ######
 
     return train_dataloader
 
