@@ -45,23 +45,25 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     # You can use progress_bar.update(1) to see the progress during training
     # You can refer to the pytorch tutorial covered in class for reference
 
-    for i in range(num_epochs):
+    for ep in range(num_epochs):
         sum_loss = 0
         for batch in train_dataloader:
-            
             batch = {k: v.to('cuda') for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs.loss
 
             optimizer.zero_grad()
+
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
+            
             sum_loss += loss.item()
+
             progress_bar.update(1)
 
         average_loss = sum_loss / len(train_dataloader)
-        print(f'Epoch: [{i}], Average Loss: {average_loss:.2f}')
+        print(f'Epoch: [{ep+1}/{num_epochs}], Avg Loss: {average_loss:.4f}')
 
     ##### YOUR CODE ENDS HERE ######
 
@@ -109,15 +111,14 @@ def create_augmented_dataloader(args, dataset):
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
 
-    aug_data = dataset["train"].shuffle(seed=12).select(range(5000))
+    aug_data = dataset["train"]
+    aug_data = aug_data.select(range(5000))
     aug_data = aug_data.map(custom_transform, load_from_cache_file=False)
-    comb_data = datasets.concatenate_datasets([dataset["train"], aug_data])
-    tok_data = comb_data.map(tokenize_function, batched=True)
-    tok_data = tok_data.remove_columns(["text"])
-    tok_data = tok_data.rename_column("label", "labels")
 
-    # Set the format for PyTorch
-    tok_data.set_format("torch")
+    temp = datasets.concatenate_datasets([dataset["train"], aug_data])
+    tok_data = temp.map(tokenize_function, batched=True).remove_columns(["text"])
+    tok_data = tok_data.rename_column("label", "labels").set_format("torch")
+
     train_dataloader = DataLoader(tok_data, shuffle=True, batch_size=args.batch_size)
 
     ##### YOUR CODE ENDS HERE ######

@@ -34,22 +34,8 @@ def example_transform(example):
 # For synonyms, use can rely on wordnet (already imported here). Wordnet (https://www.nltk.org/howto/wordnet.html) includes
 # something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
 # You can randomly select each word with some fixed probability to replace by a synonym.
-def tree_pos(treebank_tag):
-    """
-    Reference chatgpt Penn Treebank
-    """
-    #ADJ, NOUN, ADV, VERB = 'a', 'n', 'r', 'v'
 
-    if treebank_tag.startswith('J'):
-        return wordnet.ADJ
-    elif treebank_tag.startswith('V'):
-        return wordnet.VERB
-    elif treebank_tag.startswith('N'):
-        return wordnet.NOUN
-    elif treebank_tag.startswith('R'):
-        return wordnet.ADV
-    else:
-        return ''
+    
 def custom_transform(example):
     ################################
     ##### YOUR CODE BEGINGS HERE ###
@@ -59,24 +45,37 @@ def custom_transform(example):
     # how you could implement two of them --- synonym replacement and typos.
 
     # You should update example["text"] using your transformation
+    
+    ## Reference Chatgpt and Penn Treebank Method
+    
 
     postag = pos_tag(word_tokenize(example['text']))
-
-    transform_result = []
+    
+    trans_result = []
     for w, t in postag:
-        position = tree_pos(t)
-        if position:
+        if t.startswith('J'):
+            pos_idx = wordnet.ADJ
+        elif t.startswith('V'):
+            pos_idx = wordnet.VERB
+        elif t.startswith('N'):
+            pos_idx = wordnet.NOUN
+        elif t.startswith('R'):
+            pos_idx = wordnet.ADV
+        else:
+            pos_idx = ''
+
+        if pos_idx:
             syn = set()
-            for i in wordnet.synsets(w, pos=position):
+            for i in wordnet.synsets(w, pos=pos_idx):
                 for lem in i.lemmas():
                     if lem.name() != w:
                         syn.add(lem.name().replace('_', ' '))
             result = random.choice(list(syn)) if syn else w
         else:
             result = w
-        transform_result.append(result)
+        trans_result.append(result)
 
-    example['text'] = ' '.join(transform_result)
+    example['text'] = ' '.join(trans_result)
     return example
 ##### YOUR CODE ENDS HERE ######
 
